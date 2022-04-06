@@ -1,4 +1,4 @@
-package converterParser
+package converter
 
 import (
 	"encoding/binary"

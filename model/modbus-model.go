@@ -1,4 +1,4 @@
-package modbusModel
+package model
 
 import (
 	"gorm.io/driver/sqlite"
@@ -21,19 +21,15 @@ type DryInterfaceLog struct {
 	DryInterfaceID uint
 }
 
-type modbusModel struct {
-	DB *gorm.DB
-}
-
 var lock = &sync.Mutex{}
-var modbusModelInstance *modbusModel
+var modbusModelInstance *gorm.DB
 
-func GetInstance() *modbusModel {
+func GetDB() *gorm.DB {
 	if modbusModelInstance == nil {
 		lock.Lock()
 		defer lock.Unlock()
 		log.Printf("Creating new db instance")
-		modbusModelInstance = &modbusModel{DB: connectAndAutoMigrate()}
+		modbusModelInstance = connectAndAutoMigrate()
 	}
 	return modbusModelInstance
 }
