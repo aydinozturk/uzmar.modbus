@@ -32,13 +32,14 @@ func unscramble(result []byte) {
 }
 
 func main() {
+	service.GetInstance()
+
 	modbusServer := mbserver.NewServer()
 	modbusErr := modbusServer.ListenTCP("0.0.0.0:8502")
 	if modbusErr != nil {
 		log.Printf("%v\n", modbusErr)
 	}
 	defer modbusServer.Close()
-	service.GetInstance()
 	modbusClientHandler := modbus.NewTCPClientHandler("0.0.0.0:8502")
 	modbusClientHandler.SlaveId = 0x1
 	modbusClientHandler.Timeout = 3 * time.Second

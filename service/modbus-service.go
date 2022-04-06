@@ -11,7 +11,7 @@ import (
 )
 
 type modbusService struct {
-	DryInputs        map[string]bool
+	DryInputs        map[string]modbusModel.DryInput
 	CalculationTimer func(name string, status bool)
 }
 
@@ -27,29 +27,36 @@ func GetInstance() *modbusService {
 	return modbusServiceInstance
 }
 
-func createAndFillNewDryInputs() map[string]bool {
+func createAndFillNewDryInputs() map[string]modbusModel.DryInput {
 	DB := modbusModel.GetDB()
-	dryInputs := make(map[string]bool)
+	dryInputs := make(map[string]modbusModel.DryInput)
 	for i := 0; i < 16; i++ {
-		var dryItem modbusModel.DryInterface
-		dryItemResult := DB.Where(&modbusModel.DryInterface{Name: "DI" + strconv.FormatInt(int64(i), 10)}).First(&dryItem)
+		var dryItem modbusModel.DryInput
+		dryItemResult := DB.Where(&modbusModel.DryInput{Name: "DI" + strconv.FormatInt(int64(i), 10)}).First(&dryItem)
+		diName := "DI" + strconv.FormatInt(int64(i), 10)
 		if errors.Is(dryItemResult.Error, gorm.ErrRecordNotFound) {
-			diName := "DI" + strconv.FormatInt(int64(i), 10)
-			DB.Create(&modbusModel.DryInterface{Name: diName, State: false, RunningTime: 0})
-			dryInputs[diName] = false
-		} else {
-			dryInputs[dryItem.Name] = dryItem.State
+			DB.Create(&modbusModel.DryInput{Name: diName, Status: false, RunningTime: 0}).First(&dryItem)
 		}
+		dryInputs[diName] = dryItem
 	}
 	return dryInputs
 }
 
 func calculationTimer(name string, status bool) {
 	DB := modbusModel.GetDB()
-	input := modbusServiceInstance.DryInputs[name]
-	if input != status {
-		fmt.Println(name, status)
-		DB.Where("Name = '?'", name).Updates(&modbusModel.DryInterface{State: status})
-		modbusServiceInstance.DryInputs[name] = status
+	dryInput := modbusServiceInstance.DryInputs[name]
+	if dryInput.Status != status {
+		fmt.Println(dryInput.Name, dryInput.Status)
+		if status {
+			DB.Create(&modbusModel.DryInputLog{DryInputID: dryInput.ID, Status: status})
+		} else {
+			var dryItemLog modbusModel.DryInputLog
+			DB.Model(&modbusModel.DryInputLog{}).Where("dry_input_id = ?", dryInput.ID).Update("Status", status).First(&dryItemLog)
+
+			dryInput.RunningTime += uint64(dryItemLog.UpdatedAt.UnixNano()) - uint64(dryItemLog.CreatedAt.UnixNano())
+		}
+
+		DB.Model(&modbusModel.DryInput{}).Where("Name = ?", dryInput.Name).Updates(dryInput).First(&dryInput)
+		modbusServiceInstance.DryInputs[dryInput.Name] = dryInput
 	}
 }

@@ -7,18 +7,18 @@ import (
 	"sync"
 )
 
-type DryInterface struct {
+type DryInput struct {
 	gorm.Model
-	Name            string
-	State           bool
-	RunningTime     uint64
-	DryInterfaceLog []DryInterface `gorm:"foreignKey:ID"`
+	Name        string
+	Status      bool
+	RunningTime uint64
+	DryInputLog []DryInputLog `gorm:"foreignKey:ID"`
 }
 
-type DryInterfaceLog struct {
+type DryInputLog struct {
 	gorm.Model
-	State          bool
-	DryInterfaceID uint
+	Status     bool
+	DryInputID uint
 }
 
 var lock = &sync.Mutex{}
@@ -39,6 +39,6 @@ func connectAndAutoMigrate() *gorm.DB {
 	if err != nil {
 		log.Panicf("failed to connect database")
 	}
-	db.AutoMigrate(&DryInterfaceLog{}, &DryInterface{})
+	db.AutoMigrate(&DryInputLog{}, &DryInput{})
 	return db
 }
