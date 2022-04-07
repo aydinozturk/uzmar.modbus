@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"gorm.io/gorm"
 	"log"
 	"strconv"
@@ -46,17 +45,15 @@ func calculationTimer(name string, status bool) {
 	DB := modbusModel.GetDB()
 	dryInput := modbusServiceInstance.DryInputs[name]
 	if dryInput.Status != status {
-		fmt.Println(dryInput.Name, dryInput.Status)
 		if status {
 			DB.Create(&modbusModel.DryInputLog{DryInputID: dryInput.ID, Status: status})
 		} else {
 			var dryItemLog modbusModel.DryInputLog
 			DB.Model(&modbusModel.DryInputLog{}).Where("dry_input_id = ?", dryInput.ID).Update("Status", status).First(&dryItemLog)
-
-			dryInput.RunningTime += uint64(dryItemLog.UpdatedAt.UnixNano()) - uint64(dryItemLog.CreatedAt.UnixNano())
+			dryInput.RunningTime += uint64(dryItemLog.UpdatedAt.Sub(dryItemLog.CreatedAt).Seconds())
 		}
-
-		DB.Model(&modbusModel.DryInput{}).Where("Name = ?", dryInput.Name).Updates(dryInput).First(&dryInput)
-		modbusServiceInstance.DryInputs[dryInput.Name] = dryInput
+		dryInput.Status = status
+		DB.Save(&dryInput)
+		modbusServiceInstance.DryInputs[name] = dryInput
 	}
 }
